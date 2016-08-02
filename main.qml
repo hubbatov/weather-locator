@@ -2,6 +2,8 @@ import QtQuick 2.5
 import QtQuick.Window 2.2
 import QtQuick.Controls 1.1
 
+import Qt.labs.controls 1.0 as Labs
+
 Window{
 
 	id: __rootWindow
@@ -26,7 +28,7 @@ Window{
 			width: __rootWindow.width - 15
 			height: __imageBox.height + __timeSlider.height + __descriptionLabel.height + __infoPalette.height + 30
 
-			ComboBox{
+			Labs.ComboBox{
 				id: __locationSelector
 
 				anchors.top: parent.top
@@ -37,6 +39,26 @@ Window{
 				model: dataSourcesModel
 
 				textRole: "name"
+
+
+
+				delegate: Labs.ItemDelegate {
+					height: 25
+					width: __locationSelector.width
+					checkable: false
+					autoExclusive: true
+					checked: false
+
+					Rectangle{
+						anchors.fill: parent
+
+						color: active ? "#c4ecb2" : "#f3d1d1"
+
+						Text{
+							text: name
+						}
+					}
+				}
 
 				onCurrentIndexChanged: {
 					port = dataSourcesModel.get(currentIndex).source
