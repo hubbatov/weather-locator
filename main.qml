@@ -9,10 +9,9 @@ Window{
 	id: __rootWindow
 	visible: true
 
-	property var situation: []
-	property string port: "port3"
-	property int currentIndex: 0
+	property string port
 	property int pictureAvailableStep: 600000
+	property ListModel situation: ListModel{}
 	property ListModel dataSourcesModel: ListModel {}
 
 	width: 320
@@ -21,12 +20,14 @@ Window{
 	ScrollView{
 		id: __scrollView
 
+		verticalScrollBarPolicy: Qt.ScrollBarAlwaysOff
+
 		anchors.fill: parent
 
 		Item{
 			id: __contentItem
-			width: __rootWindow.width - 15
-			height: __imageBox.height + __timeSlider.height + __descriptionLabel.height + __infoPalette.height + 30
+			width: __rootWindow.width
+			height: __swipeView.height + __descriptionLabel.height + __infoPalette.height + 50
 
 			Labs.ComboBox{
 				id: __locationSelector
@@ -40,24 +41,13 @@ Window{
 
 				textRole: "name"
 
-
-
 				delegate: Labs.ItemDelegate {
-					height: 25
+					height: active ? 35 : 0
 					width: __locationSelector.width
 					checkable: false
 					autoExclusive: true
 					checked: false
-
-					Rectangle{
-						anchors.fill: parent
-
-						color: active ? "#c4ecb2" : "#f3d1d1"
-
-						Text{
-							text: name
-						}
-					}
+					text: active ? name : ""
 				}
 
 				onCurrentIndexChanged: {
@@ -65,64 +55,68 @@ Window{
 				}
 			}
 
-			Item{
-				id: __imageBox
-
-				width: parent.width
-				height: width
+			Labs.SwipeView{
+				id: __swipeView
 
 				anchors.top: __locationSelector.bottom
 
-				Image{
-					id: __bordersImage
-					source: "http://orm.mipt.ru/archive/" + port + "/borders.png"
-					anchors.fill: parent
-					opacity: 0.8
+				width: __rootWindow.width
+				height: width
+
+				Repeater{
+					model: situation
+
+					delegate: Item{
+
+						Image{
+							id: __bordersImage
+							source: "http://orm.mipt.ru/archive/" + port + "/borders.png"
+							anchors.fill: parent
+							opacity: 0.8
+						}
+
+						Image{
+							id: __currentFrameImage
+							source: selectedPicture(index)
+							anchors.fill: parent
+							opacity: 0.5
+						}
+
+						Image{
+							id: __placeNamesImage
+							source: "http://orm.mipt.ru/archive/" + port + "/placenames.png"
+							anchors.fill: parent
+							opacity: 0.8
+						}
+					}
 				}
 
-				Image{
-					id: __currentFrameImage
-					source: selectedPicture()
-					anchors.fill: parent
-					opacity: 0.5
-				}
-
-				Image{
-					id: __placeNamesImage
-					source: "http://orm.mipt.ru/archive/" + port + "/placenames.png"
-					anchors.fill: parent
-					opacity: 0.8
-				}
-			}
-
-			Slider{
-				id: __timeSlider
-
-				anchors.top: __imageBox.bottom
-				anchors.topMargin: 10
-
-				anchors.left: parent.left
-				anchors.right: parent.right
-
-				height: 20
-
-				onValueChanged: {
-					currentIndex = value
+				onCurrentIndexChanged: {
+					__descriptionLabel.text = situation.get(__swipeView.currentIndex).date.toTimeString()
 				}
 			}
+
+			Labs.PageIndicator {
+				id: __indicator
+
+				count: __swipeView.count
+				currentIndex: __swipeView.currentIndex
+
+				anchors.bottom: __swipeView.bottom
+				anchors.horizontalCenter: parent.horizontalCenter
+			}
+
 
 			Label{
 				id: __descriptionLabel
 
-				anchors.top: __timeSlider.bottom
+				anchors.top: __indicator.bottom
 				anchors.topMargin: 10
 
 				anchors.left: parent.left
 				anchors.right: parent.right
 
 				horizontalAlignment: Text.AlignHCenter
-
-				text: situation[currentIndex].toTimeString()
 			}
 
 			Image{
@@ -191,23 +185,15 @@ Window{
 		dataSourcesModel.append({source: "port50", name: "Киров", active: true})
 		dataSourcesModel.append({source: "port52", name: "Самара", active: true})
 
-
+		__locationSelector.currentIndex = 0
 
 		fillSituation()
-		nextPicture()
 	}
 
-	function nextPicture(){
-		currentIndex = currentIndex + 1
-		if(currentIndex >= situation.length){
-			currentIndex = 0
-		}
-	}
-
-	function selectedPicture(){
+	function selectedPicture(index){
 		if(situation.length == 0)
 			return ""
-		var result = createImageSource(situation[currentIndex])
+		var result = createImageSource(situation.get(index).date)
 		return result
 	}
 
@@ -216,11 +202,8 @@ Window{
 		var currentDate = new Date() - (count + 2) * pictureAvailableStep
 		for(var i = 0; i < count; ++i){
 			currentDate += pictureAvailableStep
-			situation.push(new Date(currentDate))
+			situation.append({ date: new Date(currentDate)})
 		}
-
-		__timeSlider.minimumValue = 0
-		__timeSlider.maximumValue = count - 1
 	}
 
 	function createImageSource(date){
