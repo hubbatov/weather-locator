@@ -27,7 +27,7 @@ Window{
 		Item{
 			id: __contentItem
 			width: __rootWindow.width
-			height: __swipeView.height + __descriptionLabel.height + __infoPalette.height + 50
+			height: __imageBox.height + __descriptionLabel.height + __infoPalette.height + 50
 
 			Labs.ComboBox{
 				id: __locationSelector
@@ -55,62 +55,67 @@ Window{
 				}
 			}
 
-			Labs.SwipeView{
-				id: __swipeView
+			Item{
+				id: __imageBox
 
 				anchors.top: __locationSelector.bottom
 
 				width: __rootWindow.width
 				height: width
 
-				Repeater{
-					model: situation
+				Image{
+					id: __bordersImage
+					source: "http://orm.mipt.ru/archive/" + port + "/borders.png"
+					anchors.fill: parent
+					opacity: 0.8
+				}
 
-					delegate: Item{
+				Image{
+					id: __currentFrameImage
+					source: selectedPicture(__swipeView.currentIndex)
+					anchors.fill: parent
+					opacity: 0.5
+				}
 
-						Image{
-							id: __bordersImage
-							source: "http://orm.mipt.ru/archive/" + port + "/borders.png"
-							anchors.fill: parent
-							opacity: 0.8
-						}
+				Image{
+					id: __placeNamesImage
+					source: "http://orm.mipt.ru/archive/" + port + "/placenames.png"
+					anchors.fill: parent
+					opacity: 0.8
+				}
 
-						Image{
-							id: __currentFrameImage
-							source: selectedPicture(index)
-							anchors.fill: parent
-							opacity: 0.5
-						}
+				Labs.SwipeView{
+					id: __swipeView
 
-						Image{
-							id: __placeNamesImage
-							source: "http://orm.mipt.ru/archive/" + port + "/placenames.png"
-							anchors.fill: parent
-							opacity: 0.8
-						}
+					anchors.fill: parent
+
+					Repeater{
+						model: situation
+
+						delegate: Item{ }
+					}
+
+					onCurrentIndexChanged: {
+						__descriptionLabel.text = situation.get(__swipeView.currentIndex).date.toTimeString()
 					}
 				}
 
-				onCurrentIndexChanged: {
-					__descriptionLabel.text = situation.get(__swipeView.currentIndex).date.toTimeString()
+				Labs.PageIndicator {
+					id: __indicator
+
+					count: __swipeView.count
+					currentIndex: __swipeView.currentIndex
+
+					anchors.bottom: __swipeView.bottom
+					anchors.horizontalCenter: parent.horizontalCenter
 				}
-			}
-
-			Labs.PageIndicator {
-				id: __indicator
-
-				count: __swipeView.count
-				currentIndex: __swipeView.currentIndex
-
-				anchors.bottom: __swipeView.bottom
-				anchors.horizontalCenter: parent.horizontalCenter
 			}
 
 
 			Label{
 				id: __descriptionLabel
 
-				anchors.top: __indicator.bottom
+				anchors.top: __imageBox.bottom
 				anchors.topMargin: 10
 
 				anchors.left: parent.left
