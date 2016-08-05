@@ -4,30 +4,90 @@ import QtQuick.Controls 1.1
 
 import Qt.labs.controls 1.0 as Labs
 
+import "."
+
 Window{
 
 	id: __rootWindow
 	visible: true
 
 	property string port
-	property int pictureAvailableStep: 600000
 	property ListModel situation: ListModel{}
 	property ListModel dataSourcesModel: ListModel {}
+	property int currentIndex: 0
+
+	color: ApplicationStyle.backgroundColor
 
 	width: 320
 	height: 480
+
+	Timer{
+		id: __updateFramesTimer
+		interval: ApplicationStyle.pageAvailableInterval
+		running: true
+		onTriggered: {
+			start()
+		}
+	}
+
+	Timer{
+		id: __reconnectionTimer
+		interval: ApplicationStyle.reconnectionInterval
+		repeat: false
+		onTriggered: {
+			start()
+		}
+	}
+
+	Timer{
+		id: __animateTimer
+		interval: ApplicationStyle.animationInterval
+		repeat: true
+		onTriggered: {
+			if(currentIndex < situation.count - 1)
+				currentIndex = currentIndex + 1
+			else
+				__animateTimer.stop()
+		}
+	}
+
+	Rectangle{
+		id: __errorConnectionSticker
+
+		anchors.fill: parent
+
+		color: ApplicationStyle.backgroundColor
+
+		BusyIndicator{
+			width: 150
+			height: 150
+
+			anchors.centerIn: parent
+
+			running: __errorConnectionSticker.visible
+		}
+
+		CustomLabel{
+			anchors.bottom: parent.bottom; anchors.bottomMargin: 10
+			anchors.horizontalCenter: parent.horizontalCenter
+
+			text: qsTr("Пытаюсь подключиться к сети Интернет")
+		}
+	}
 
 	ScrollView{
 		id: __scrollView
 
 		verticalScrollBarPolicy: Qt.ScrollBarAlwaysOff
 
+		visible: !__errorConnectionSticker.visible
+
 		anchors.fill: parent
 
 		Item{
 			id: __contentItem
 			width: __rootWindow.width
-			height: __imageBox.height + __descriptionLabel.height + __infoPalette.height + 50
+			height: __imageBox.height + __descriptionLabel.height + __infoPalette.height + 70
 
 			Labs.ComboBox{
 				id: __locationSelector
@@ -72,9 +132,9 @@ Window{
 
 				Image{
 					id: __currentFrameImage
-					source: selectedPicture(__swipeView.currentIndex)
+					source: selectedPicture(currentIndex)
 					anchors.fill: parent
-					opacity: 0.5
+					opacity: 0.6
 				}
 
 				Image{
@@ -84,62 +144,119 @@ Window{
 					opacity: 0.8
 				}
 
-				Labs.SwipeView{
-					id: __swipeView
-
+				MouseArea{
 					anchors.fill: parent
 
-					Repeater{
-						model: situation
+					property var summary: 0
+					property int step: width / situation.count
+					property int pressedX: 0
 
-						delegate: Item{ }
-					}
-
-					onCurrentIndexChanged: {
-						__descriptionLabel.text = situation.get(__swipeView.currentIndex).date.toTimeString()
-					}
-				}
-
-				Labs.PageIndicator {
-					id: __indicator
-
-					count: __swipeView.count
-					currentIndex: __swipeView.currentIndex
-
-					anchors.bottom: __swipeView.bottom
+					anchors.bottom: parent.bottom
 					anchors.horizontalCenter: parent.horizontalCenter
+
+					propagateComposedEvents: false
+					scrollGestureEnabled: false
+					preventStealing: true
+
+					onPressed: {
+						pressedX = mouseX
+					}
+
+					onMouseXChanged: {
+						if(summary >= 0 && summary < situation.count)
+							summary += ( ( mouseX - pressedX ) / step / 2)
+
+						if(summary < 0) summary = 0
+						if(summary > situation.count - 1) summary = situation.count - 1
+
+						currentIndex = summary
+
+						__descriptionLabel.text = situation.get(currentIndex).date.toTimeString()
+
+						pressedX = mouseX
+					}
 				}
 			}
 
-
-			Label{
+			CustomLabel{
 				id: __descriptionLabel
 
-				anchors.top: __imageBox.bottom
-				anchors.topMargin: 10
+				anchors.bottom: __imageBox.bottom
+				anchors.horizontalCenter: parent.horizontalCenter
 
-				anchors.left: parent.left
-				anchors.right: parent.right
+				font.pointSize: 14
+				color: ApplicationStyle.textColor
 
 				horizontalAlignment: Text.AlignHCenter
+
+				text: situation.count > 0 ? situation.get(currentIndex).date.toTimeString() : ""
 			}
 
-			Image{
+			InfoPalette{
 				id: __infoPalette
-				source: "http://orm.mipt.ru/DAT/paletka_3.GIF"
-
-				fillMode: Image.PreserveAspectFit
 
 				anchors.top: __descriptionLabel.bottom
 				anchors.topMargin: 10
 
-				anchors.left: parent.left
-				anchors.right: parent.right
+				anchors.left: parent.left; anchors.leftMargin: 10
+				anchors.right: parent.right; anchors.rightMargin: 10
 			}
 		}
 	}
 
 	Component.onCompleted: {
+		start()
+	}
+
+	function start(){
+		var connectionMade = doesConnectionExist()
+		if(connectionMade)
+			connectionAccepted()
+		else
+			__reconnectionTimer.start()
+	}
+
+	function doesConnectionExist() {
+		var xhr = new XMLHttpRequest()
+		var file = "http://orm.mipt.ru/DAT/vld.gif"
+
+		xhr.open('HEAD', file, false);
+
+		try {
+			xhr.send();
+
+			if (xhr.status >= 200 && xhr.status < 304) {
+				return true;
+			} else {
+				return false;
+			}
+		} catch (e) {
+			return false;
+		}
+	}
+
+	function connectionAccepted(){
+		__errorConnectionSticker.visible = false
+
+		fillSources()
+
+		__locationSelector.currentIndex = 0
+
+		fillSituation()
+
+		__descriptionLabel.text = situation.get(currentIndex).date.toTimeString()
+	}
+
+	function selectedPicture(index){
+		if(situation.count == 0)
+			return ""
+		var result = createImageSource(situation.get(index).date)
+		return result
+	}
+
+	function fillSources(){
+		dataSourcesModel.clear()
+
 		dataSourcesModel.append({source: "port3", name: "Тверь", active: true})
 		dataSourcesModel.append({source: "port1", name: "Крылатское", active: true})
 		dataSourcesModel.append({source: "port2", name: "Калуга", active: true})
@@ -189,24 +306,15 @@ Window{
 		dataSourcesModel.append({source: "port49", name: "Миллерово", active: false})
 		dataSourcesModel.append({source: "port50", name: "Киров", active: true})
 		dataSourcesModel.append({source: "port52", name: "Самара", active: true})
-
-		__locationSelector.currentIndex = 0
-
-		fillSituation()
-	}
-
-	function selectedPicture(index){
-		if(situation.length == 0)
-			return ""
-		var result = createImageSource(situation.get(index).date)
-		return result
 	}
 
 	function fillSituation(){
-		var count = 12
-		var currentDate = new Date() - (count + 2) * pictureAvailableStep
+		situation.clear()
+
+		var count = 15
+		var currentDate = new Date() - (count + 2) * ApplicationStyle.pageAvailableInterval
 		for(var i = 0; i < count; ++i){
-			currentDate += pictureAvailableStep
+			currentDate += ApplicationStyle.pageAvailableInterval
 			situation.append({ date: new Date(currentDate)})
 		}
 	}

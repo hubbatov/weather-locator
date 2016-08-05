@@ -1,5 +1,10 @@
 <RCC>
     <qresource prefix="/">
         <file>main.qml</file>
+        <file>CustomLabel.qml</file>
+        <file>ApplicationStyle.qml</file>
+        <file>qmldir</file>
+        <file>InfoPalette.qml</file>
+        <file>InfoPaletteRow.qml</file>
     </qresource>
 </RCC>
