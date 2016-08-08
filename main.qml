@@ -130,11 +130,16 @@ Window{
 					opacity: 0.8
 				}
 
-				Image{
-					id: __currentFrameImage
-					source: selectedPicture(currentIndex)
-					anchors.fill: parent
-					opacity: 0.6
+				Repeater{
+
+					model: situation.count
+
+					Image{
+						anchors.fill: __imageBox
+						source: selectedPicture(index)
+						opacity: index == currentIndex ? 0.6 : 0.0
+						Behavior on opacity { NumberAnimation{ duration: 150 }}
+					}
 				}
 
 				Image{
@@ -164,7 +169,7 @@ Window{
 
 					onMouseXChanged: {
 						if(summary >= 0 && summary < situation.count)
-							summary += ( ( mouseX - pressedX ) / step / 2)
+							summary -= ( ( mouseX - pressedX ) / step / 2)
 
 						if(summary < 0) summary = 0
 						if(summary > situation.count - 1) summary = situation.count - 1
@@ -176,26 +181,45 @@ Window{
 						pressedX = mouseX
 					}
 				}
-			}
 
-			CustomLabel{
-				id: __descriptionLabel
+				Rectangle{
+					anchors.bottom: parent.bottom
 
-				anchors.bottom: __imageBox.bottom
-				anchors.horizontalCenter: parent.horizontalCenter
+					width: parent.width
+					height: 10
 
-				font.pointSize: 14
-				color: ApplicationStyle.textColor
+					color: "white"
+					opacity: 0.3
 
-				horizontalAlignment: Text.AlignHCenter
+					Rectangle{
+						width: 7
+						height: parent.height
 
-				text: situation.count > 0 ? situation.get(currentIndex).date.toTimeString() : ""
+						color: "red"
+
+						x: currentIndex * ( parent.width / (situation.count - 1) ) - width /2
+					}
+				}
+
+				CustomLabel{
+					id: __descriptionLabel
+
+					anchors.bottom: parent.bottom; anchors.bottomMargin: 10
+					anchors.horizontalCenter: parent.horizontalCenter
+
+					font.pointSize: 14
+					color: ApplicationStyle.textColor
+
+					horizontalAlignment: Text.AlignHCenter
+
+					text: situation.count > 0 ? situation.get(currentIndex).date.toTimeString() : ""
+				}
 			}
 
 			InfoPalette{
 				id: __infoPalette
 
-				anchors.top: __descriptionLabel.bottom
+				anchors.top: __imageBox.bottom
 				anchors.topMargin: 10
 
 				anchors.left: parent.left; anchors.leftMargin: 10
@@ -321,10 +345,8 @@ Window{
 
 	function createImageSource(date){
 		var str = 'http://orm.mipt.ru/archive/' + port + '/';
-		str += date.getFullYear().toString() + '_';
-		str += (date.getMonth() + 1).toString() + '_';
-		str += date.getDay().toString() + '_';
-		str += date.getHours().toString() + '_';
+
+		str += date.toLocaleString(Qt.locale("ru_RU"), "yyyy_M_d_h_")
 
 		var minutes = date.getMinutes()
 		minutes -= (minutes % 10)

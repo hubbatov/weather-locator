@@ -9,6 +9,5 @@ QtObject {
 	property int animationInterval: 200
 	property int reconnectionInterval: 5000
 	property int pageAvailableInterval: 600000
-
 }
 
